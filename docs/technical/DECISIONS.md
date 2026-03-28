@@ -202,3 +202,12 @@ Lý do:
 - (-) Không có foreign key constraint trên từng điều kiện — validation phải ở application layer (Zod).
 - (-) Query SQL thuần trên từng điều kiện khó hơn (cần jsonb operators) — nhưng use case này không phổ biến trong dự án.
 - (-) Nếu structure conditions thay đổi lớn, cần migration script để update existing JSON records.
+
+---
+
+## ADR-008: Vercel Singapore region
+**Date**: 2026-03-28
+**Status**: Accepted
+**Context**: Ứng dụng phục vụ người dùng tại Việt Nam, cần latency thấp nhất.
+**Decision**: Deploy Vercel region `sin1` (Singapore) — region gần Việt Nam nhất trong hệ thống Vercel.
+**Consequences**: Latency ~30-50ms từ Việt Nam. Trade-off: không phải region rẻ nhất nhưng acceptable cho internal app.
