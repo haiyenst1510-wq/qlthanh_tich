@@ -1,0 +1,49 @@
+# TODO / Backlog
+
+> **Governor**: @project-manager — invoke for sprint planning, prioritization, and feature breakdown
+> **Agents**: May add items to "Backlog" and move completed items to "Completed". Preserve section order. Never reorder items within a section — priority position is set by humans or @project-manager when explicitly asked.
+
+---
+
+## In Progress
+
+_(trống — chưa bắt đầu)_
+
+---
+
+## Up Next (prioritized)
+
+- [ ] #001 — Khởi tạo dự án Next.js + Prisma + PostgreSQL + Auth [area: setup] → [.tasks/001-project-init.md](.tasks/001-project-init.md)
+- [ ] #002 — Database schema: GV, thành tích, SKKN, khen thưởng, quy tắc [area: database] → [.tasks/002-database-schema.md](.tasks/002-database-schema.md)
+- [ ] #003 — Authentication: Admin đăng nhập + Admin tạo tài khoản GV [area: backend] → [.tasks/003-authentication.md](.tasks/003-authentication.md)
+
+---
+
+## Backlog
+
+- [ ] #004 — API CRUD hồ sơ giáo viên (Admin) [area: backend] → [.tasks/004-teacher-profile-api.md](.tasks/004-teacher-profile-api.md)
+- [ ] #005 — Logic SKKN tiêu: CSTĐ Cách 2 + Bằng khen UBND TP [area: backend] → [.tasks/005-skkn-consume-logic.md](.tasks/005-skkn-consume-logic.md)
+- [ ] #006 — API nhập thành tích theo năm học (GV) [area: backend] → [.tasks/006-achievement-api.md](.tasks/006-achievement-api.md)
+- [ ] #007 — API cấu hình quy tắc xét duyệt danh hiệu (Admin) [area: backend] → [.tasks/007-rules-config-api.md](.tasks/007-rules-config-api.md)
+- [ ] #008 — Engine lọc GV tiềm năng theo danh hiệu [area: backend] → [.tasks/008-eligibility-engine.md](.tasks/008-eligibility-engine.md)
+- [ ] #009 — UI GV: trang hồ sơ + form nhập thành tích [area: frontend] → [.tasks/009-teacher-ui.md](.tasks/009-teacher-ui.md)
+- [ ] #010 — UI Admin: quản lý GV + xem/sửa thành tích [area: frontend] → [.tasks/010-admin-teacher-mgmt-ui.md](.tasks/010-admin-teacher-mgmt-ui.md)
+- [ ] #011 — UI Admin: trang lọc GV tiềm năng [area: frontend] → [.tasks/011-admin-filter-ui.md](.tasks/011-admin-filter-ui.md)
+- [ ] #012 — UI Admin: dashboard thống kê + cấu hình quy tắc [area: frontend] → [.tasks/012-admin-dashboard-ui.md](.tasks/012-admin-dashboard-ui.md)
+- [ ] #013 — Xuất báo cáo Excel (thành tích + kết quả lọc) [area: backend] → [.tasks/013-excel-export.md](.tasks/013-excel-export.md)
+- [ ] #014 — E2E tests: luồng GV nhập thành tích + SKKN tiêu [area: qa] → [.tasks/014-e2e-tests.md](.tasks/014-e2e-tests.md)
+- [ ] #015 — User Guide cho GV và Admin [area: docs] → [.tasks/015-user-guide.md](.tasks/015-user-guide.md)
+
+---
+
+## Completed
+
+- [x] #000 — Initial project setup and template configuration → [.tasks/000-initial-project-setup.md](.tasks/000-initial-project-setup.md)
+
+---
+
+## Item Format Guide
+
+```
+- [ ] #NNN — Brief description [area: frontend|backend|database|qa|docs|infra|design|setup] → [.tasks/NNN-short-title.md](.tasks/NNN-short-title.md)
+```
