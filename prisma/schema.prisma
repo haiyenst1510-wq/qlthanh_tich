@@ -1,0 +1,247 @@
+// =============================================================================
+// Prisma Schema — Quản lý Thành tích Giáo viên
+// Stack: Prisma ORM + Supabase PostgreSQL
+// Last updated: 2026-03-28
+//
+// Connection strings (see .env.example):
+//   DATABASE_URL  → pgBouncer pooling (runtime queries)
+//   DIRECT_URL    → direct connection (prisma migrate)
+// =============================================================================
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum Role {
+  ADMIN
+  TEACHER
+}
+
+enum TaskResult {
+  GOOD
+  EXCELLENT
+}
+
+enum PartyRating {
+  GOOD
+  EXCELLENT
+}
+
+enum CompetitionTitleType {
+  CHIEN_SI_THI_DUA
+  GV_GIOI
+  GV_CN_GIOI
+}
+
+enum TitleLevel {
+  SCHOOL
+  DISTRICT
+  CITY
+}
+
+enum AchievementMethod {
+  METHOD_1
+  METHOD_2
+}
+
+enum SKKNLevel {
+  SCHOOL
+  DISTRICT
+  CITY
+}
+
+enum SKKNStatus {
+  UNUSED
+  USED
+}
+
+enum AwardType {
+  CERTIFICATE
+  COMMENDATION
+}
+
+// =============================================================================
+// USER + TEACHER PROFILE
+// =============================================================================
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  passwordHash  String
+  role          Role           @default(TEACHER)
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  teacherProfile TeacherProfile?
+
+  @@index([email])
+  @@map("users")
+}
+
+model TeacherProfile {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  fullName      String
+  dateOfBirth   DateTime?
+  department    String    // Tổ chuyên môn
+  teachingSince Int       // Năm vào nghề (integer, e.g. 2010)
+  isPartyMember Boolean   @default(false)
+  partyJoinDate DateTime? // Chỉ set nếu isPartyMember = true
+
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  yearlyRecords YearlyRecord[]
+  skkns         SKKN[]
+  awards        Award[]
+
+  @@index([userId])
+  @@map("teacher_profiles")
+}
+
+// =============================================================================
+// YEARLY RECORD (Thành tích theo năm học)
+// =============================================================================
+
+model YearlyRecord {
+  id           String      @id @default(cuid())
+  teacherId    String
+  academicYear String      // Format: "2024-2025"
+  taskResult   TaskResult
+  partyRating  PartyRating? // Null nếu GV không phải đảng viên
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  teacher           TeacherProfile     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  competitionTitles CompetitionTitle[]
+
+  // Mỗi GV chỉ có 1 record per năm học
+  @@unique([teacherId, academicYear])
+  @@index([teacherId])
+  @@map("yearly_records")
+}
+
+// =============================================================================
+// COMPETITION TITLE (Danh hiệu thi đua)
+// =============================================================================
+
+model CompetitionTitle {
+  id                String             @id @default(cuid())
+  yearlyRecordId    String
+  type              CompetitionTitleType
+  level             TitleLevel?        // Null với CHIEN_SI_THI_DUA (cơ sở = implicit)
+  achievementMethod AchievementMethod? // Chỉ dùng với CHIEN_SI_THI_DUA
+
+  yearlyRecord      YearlyRecord       @relation(fields: [yearlyRecordId], references: [id], onDelete: Cascade)
+
+  @@index([yearlyRecordId])
+  @@map("competition_titles")
+}
+
+// =============================================================================
+// SKKN (Sáng kiến kinh nghiệm)
+// =============================================================================
+
+model SKKN {
+  id           String     @id @default(cuid())
+  teacherId    String
+  title        String
+  level        SKKNLevel
+  rating       String     // Ví dụ: "Tốt", "Khá", "Xuất sắc"
+  academicYear String     // Format: "2024-2025"
+  status       SKKNStatus @default(UNUSED)
+  usedFor      String?    // Tên danh hiệu đã dùng để xét (nullable)
+  usedYear     String?    // Năm xét duyệt (nullable)
+  createdAt    DateTime   @default(now())
+
+  teacher      TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  awardSkkns   AwardSKKN[]
+
+  @@index([teacherId])
+  @@index([status])
+  @@index([teacherId, status])
+  @@map("skkns")
+}
+
+// =============================================================================
+// AWARD (Khen thưởng)
+// =============================================================================
+
+model Award {
+  id           String    @id @default(cuid())
+  teacherId    String
+  type         AwardType
+  issuingLevel String    // Ví dụ: "UBND Thành phố", "BGH Trường", "Sở GD&ĐT"
+  content      String    // Nội dung khen thưởng
+  year         String    // Năm (ví dụ: "2024")
+  createdAt    DateTime  @default(now())
+
+  teacher      TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  awardSkkns   AwardSKKN[]
+
+  @@index([teacherId])
+  @@index([year])
+  @@map("awards")
+}
+
+// =============================================================================
+// AWARD <-> SKKN (junction table)
+// Bảng trung gian nối Award với SKKN đã được tiêu để xét thưởng đó
+// =============================================================================
+
+model AwardSKKN {
+  id      String @id @default(cuid())
+  awardId String
+  skknId  String
+
+  award   Award  @relation(fields: [awardId], references: [id], onDelete: Cascade)
+  skkn    SKKN   @relation(fields: [skknId], references: [id], onDelete: Cascade)
+
+  @@unique([awardId, skknId])
+  @@index([awardId])
+  @@index([skknId])
+  @@map("award_skkns")
+}
+
+// =============================================================================
+// ELIGIBILITY RULE (Quy tắc xét danh hiệu — rule-driven, không hardcode)
+// ADR-005, ADR-007: conditions lưu dạng JSON (jsonb trong PostgreSQL)
+//
+// TypeScript type cho conditions (xem DATABASE.md để biết full schema):
+//
+// type Condition = {
+//   type: 'SKKN' | 'COMPETITION_TITLE' | 'AWARD' | 'TASK_RESULT'
+//   minCount: number
+//   statusRequired: 'UNUSED' | 'ANY'
+//   yearConstraint:
+//     | { type: 'CURRENT_YEAR' }
+//     | { type: 'WITHIN_N_YEARS'; n: number }
+//     | { type: 'ANY' }
+//   consumeAfterEval: boolean
+//   legalNote?: string
+// }
+//
+// EligibilityRule.conditions is Condition[]
+// =============================================================================
+
+model EligibilityRule {
+  id          String   @id @default(cuid())
+  targetTitle String   // Tên danh hiệu, ví dụ: "Chiến sĩ thi đua cơ sở"
+  conditions  Json     // Condition[] — validated bởi Zod tại application layer
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([targetTitle])
+  @@index([isActive])
+  @@map("eligibility_rules")
+}
