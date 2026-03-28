@@ -1,4 +1,38 @@
+'use client'
+
+import { useState } from 'react'
+import { signIn } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+
 export default function LoginPage() {
+  const router = useRouter()
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+
+    const form = e.currentTarget
+    const email = (form.elements.namedItem('email') as HTMLInputElement).value
+    const password = (form.elements.namedItem('password') as HTMLInputElement).value
+
+    const res = await signIn('credentials', {
+      email,
+      password,
+      redirect: false,
+    })
+
+    setLoading(false)
+
+    if (res?.error) {
+      setError('Email hoặc mật khẩu không đúng')
+    } else {
+      router.push('/')
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div
@@ -11,7 +45,7 @@ export default function LoginPage() {
             Hệ thống quản lý thành tích giáo viên
           </p>
         </div>
-        <form className="space-y-4">
+        <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium">
               Email
@@ -38,11 +72,15 @@ export default function LoginPage() {
               placeholder="••••••••"
             />
           </div>
+          {error && (
+            <p className="text-sm text-red-500">{error}</p>
+          )}
           <button
             type="submit"
-            className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity"
+            disabled={loading}
+            className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            Đăng nhập
+            {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </button>
         </form>
       </div>
