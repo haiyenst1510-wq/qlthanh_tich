@@ -9,6 +9,7 @@ const navLinks = [
   { href: '/admin/teachers', label: 'Giáo viên' },
   { href: '/admin/eligibility', label: 'Xét duyệt' },
   { href: '/admin/rules', label: 'Quy tắc' },
+  { href: '/admin/departments', label: 'Tổ chuyên môn' },
 ]
 
 export default function AdminShellLayout({

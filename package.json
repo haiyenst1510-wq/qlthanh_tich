@@ -12,6 +12,9 @@
     "test:e2e": "playwright test",
     "db:seed": "tsx prisma/seed.ts"
   },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "dependencies": {
     "next": "14.2.29",
     "@auth/prisma-adapter": "^2.7.4",

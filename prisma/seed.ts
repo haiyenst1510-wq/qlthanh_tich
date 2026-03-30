@@ -211,6 +211,22 @@ async function main() {
   })
   console.log(`  ✓ EligibilityRule: ${ruleBangKhen.targetTitle}`)
 
+  // ---------------------------------------------------------------------------
+  // 7. Default Departments
+  // ---------------------------------------------------------------------------
+  const defaultDepartments = [
+    'Toán', 'Văn', 'Anh', 'Lý', 'Hóa', 'Sinh', 'Sử', 'Địa',
+    'GDCD', 'Thể dục', 'Tin học', 'Công nghệ', 'Âm nhạc', 'Mỹ thuật',
+  ]
+  for (let i = 0; i < defaultDepartments.length; i++) {
+    await prisma.department.upsert({
+      where: { name: defaultDepartments[i] },
+      update: {},
+      create: { name: defaultDepartments[i], order: i },
+    })
+  }
+  console.log(`  ✓ ${defaultDepartments.length} tổ chuyên môn mặc định`)
+
   console.log('\n✅ Seed hoàn tất!')
   console.log('\nTài khoản mặc định:')
   console.log('  Admin:    admin@school.edu.vn  /  Admin@123')

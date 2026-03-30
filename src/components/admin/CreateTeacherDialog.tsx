@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 
 interface CreateTeacherDialogProps {
@@ -20,22 +20,10 @@ interface FormData {
   partyJoinDate: string
 }
 
-const DEPARTMENTS = [
-  'Toán',
-  'Văn',
-  'Anh',
-  'Lý',
-  'Hóa',
-  'Sinh',
-  'Sử',
-  'Địa',
-  'GDCD',
-  'Thể dục',
-  'Tin học',
-  'Công nghệ',
-  'Âm nhạc',
-  'Mỹ thuật',
-]
+interface Department {
+  id: string
+  name: string
+}
 
 export function CreateTeacherDialog({
   open,
@@ -52,7 +40,15 @@ export function CreateTeacherDialog({
     isPartyMember: false,
     partyJoinDate: '',
   })
+  const [departments, setDepartments] = useState<Department[]>([])
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/admin/departments')
+      .then(r => r.json())
+      .then(setDepartments)
+      .catch(() => {})
+  }, [])
   const [notification, setNotification] = useState<{
     type: 'success' | 'error'
     message: string
@@ -252,9 +248,12 @@ export function CreateTeacherDialog({
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
               >
                 <option value="">Chọn tổ chuyên môn</option>
-                {DEPARTMENTS.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
+                {departments.length === 0 && (
+                  <option disabled value="">Chưa có tổ nào — vào Cài đặt để thêm</option>
+                )}
+                {departments.map((d) => (
+                  <option key={d.id} value={d.name}>
+                    {d.name}
                   </option>
                 ))}
               </select>

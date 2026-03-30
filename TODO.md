@@ -7,15 +7,15 @@
 
 ## In Progress
 
-_(trống — chưa bắt đầu)_
+_(trống)_
 
 ---
 
 ## Up Next (prioritized)
 
-- [ ] #001 — Khởi tạo dự án Next.js + Prisma + PostgreSQL + Auth [area: setup] → [.tasks/001-project-init.md](.tasks/001-project-init.md)
-- [ ] #002 — Database schema: GV, thành tích, SKKN, khen thưởng, quy tắc [area: database] → [.tasks/002-database-schema.md](.tasks/002-database-schema.md)
-- [ ] #003 — Authentication: Admin đăng nhập + Admin tạo tài khoản GV [area: backend] → [.tasks/003-authentication.md](.tasks/003-authentication.md)
+- [ ] #003 — Authentication: Admin tạo tài khoản GV, đổi mật khẩu [area: backend] → [.tasks/003-authentication.md](.tasks/003-authentication.md)
+- [ ] #004 — API CRUD hồ sơ giáo viên (Admin) [area: backend] → [.tasks/004-teacher-profile-api.md](.tasks/004-teacher-profile-api.md)
+- [ ] #005 — Logic SKKN tiêu: rule-driven consume engine [area: backend] → [.tasks/005-skkn-consume-logic.md](.tasks/005-skkn-consume-logic.md)
 
 ---
 
@@ -39,6 +39,8 @@ _(trống — chưa bắt đầu)_
 ## Completed
 
 - [x] #000 — Initial project setup and template configuration → [.tasks/000-initial-project-setup.md](.tasks/000-initial-project-setup.md)
+- [x] #001 — Khởi tạo dự án Next.js + Prisma + Supabase + Auth → [.tasks/001-project-init.md](.tasks/001-project-init.md)
+- [x] #002 — Database schema: GV, thành tích, SKKN, khen thưởng, quy tắc → [.tasks/002-database-schema.md](.tasks/002-database-schema.md)
 
 ---
 
