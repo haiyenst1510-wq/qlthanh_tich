@@ -1,0 +1,666 @@
+'use client'
+
+import { useEffect, useState, useCallback } from 'react'
+
+// --- Types ---
+interface CompetitionTitle {
+  id: string
+  type: 'CHIEN_SI_THI_DUA' | 'GV_GIOI' | 'GV_CN_GIOI'
+  level: 'SCHOOL' | 'DISTRICT' | 'CITY' | null
+  achievementMethod: 'METHOD_1' | 'METHOD_2' | null
+}
+
+interface YearlyRecord {
+  id: string
+  academicYear: string
+  taskResult: 'GOOD' | 'EXCELLENT'
+  partyRating: 'GOOD' | 'EXCELLENT' | null
+  competitionTitles: CompetitionTitle[]
+}
+
+interface SKKN {
+  id: string
+  title: string
+  level: 'SCHOOL' | 'DISTRICT' | 'CITY'
+  rating: string
+  academicYear: string
+  status: 'UNUSED' | 'USED'
+  usedFor: string | null
+  usedYear: string | null
+}
+
+interface Award {
+  id: string
+  type: 'CERTIFICATE' | 'COMMENDATION'
+  issuingLevel: string
+  content: string
+  year: string
+}
+
+// --- Helpers ---
+function currentAcademicYear(): string {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = now.getMonth() + 1 // 1-based
+  // Academic year starts in September
+  return m >= 9 ? `${y}-${y + 1}` : `${y - 1}-${y}`
+}
+
+function generateYears(): string[] {
+  const current = currentAcademicYear()
+  const startYear = parseInt(current.split('-')[0])
+  const years: string[] = []
+  for (let y = startYear; y >= startYear - 9; y--) {
+    years.push(`${y}-${y + 1}`)
+  }
+  return years
+}
+
+const TITLE_TYPE_LABELS: Record<string, string> = {
+  CHIEN_SI_THI_DUA: 'Chiến sĩ thi đua',
+  GV_GIOI: 'Giáo viên giỏi',
+  GV_CN_GIOI: 'GV chủ nhiệm giỏi',
+}
+
+const LEVEL_LABELS: Record<string, string> = {
+  SCHOOL: 'Cấp trường',
+  DISTRICT: 'Cấp huyện',
+  CITY: 'Cấp tỉnh/TP',
+}
+
+const SKKN_LEVEL_LABELS: Record<string, string> = {
+  SCHOOL: 'Cấp trường',
+  DISTRICT: 'Cấp huyện/quận',
+  CITY: 'Cấp tỉnh/TP',
+}
+
+// --- Main component ---
+export default function AchievementsPage() {
+  const [selectedYear, setSelectedYear] = useState(currentAcademicYear())
+  const years = generateYears()
+
+  const [allData, setAllData] = useState<{
+    yearlyRecords: YearlyRecord[]
+    skkns: SKKN[]
+    awards: Award[]
+  }>({ yearlyRecords: [], skkns: [], awards: [] })
+
+  const [loading, setLoading] = useState(true)
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+
+  function showNotification(type: 'success' | 'error', message: string) {
+    setNotification({ type, message })
+    setTimeout(() => setNotification(null), 4000)
+  }
+
+  const fetchAll = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/teacher/achievements')
+      if (!res.ok) throw new Error('Không thể tải dữ liệu')
+      const data = await res.json()
+      setAllData(data)
+    } catch {
+      showNotification('error', 'Không thể tải dữ liệu thành tích')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { fetchAll() }, [fetchAll])
+
+  // Derived: data for selected year
+  const yearRecord = allData.yearlyRecords.find(r => r.academicYear === selectedYear) ?? null
+  const yearSkkns = allData.skkns.filter(s => s.academicYear === selectedYear)
+  // Awards use calendar year — we show awards from both years in the range
+  const [startY, endY] = selectedYear.split('-')
+  const yearAwards = allData.awards.filter(a => a.year === startY || a.year === endY)
+
+  // --- Yearly record form ---
+  const [taskResult, setTaskResult] = useState<'GOOD' | 'EXCELLENT'>('GOOD')
+  const [partyRating, setPartyRating] = useState<'' | 'GOOD' | 'EXCELLENT'>('')
+  const [savingRecord, setSavingRecord] = useState(false)
+
+  useEffect(() => {
+    if (yearRecord) {
+      setTaskResult(yearRecord.taskResult)
+      setPartyRating(yearRecord.partyRating ?? '')
+    } else {
+      setTaskResult('GOOD')
+      setPartyRating('')
+    }
+  }, [yearRecord, selectedYear])
+
+  async function handleSaveRecord() {
+    setSavingRecord(true)
+    try {
+      const res = await fetch('/api/teacher/yearly-record', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          academicYear: selectedYear,
+          taskResult,
+          partyRating: partyRating || null,
+        }),
+      })
+      if (!res.ok) {
+        const d = await res.json()
+        throw new Error(d?.error ?? 'Lưu thất bại')
+      }
+      await fetchAll()
+      showNotification('success', 'Đã lưu kết quả năm học')
+    } catch (err) {
+      showNotification('error', err instanceof Error ? err.message : 'Có lỗi xảy ra')
+    } finally {
+      setSavingRecord(false)
+    }
+  }
+
+  // --- Competition title form ---
+  const [titleType, setTitleType] = useState<'CHIEN_SI_THI_DUA' | 'GV_GIOI' | 'GV_CN_GIOI'>('CHIEN_SI_THI_DUA')
+  const [titleLevel, setTitleLevel] = useState<'SCHOOL' | 'DISTRICT' | 'CITY'>('SCHOOL')
+  const [titleMethod, setTitleMethod] = useState<'METHOD_1' | 'METHOD_2' | ''>('')
+  const [addingTitle, setAddingTitle] = useState(false)
+
+  async function handleAddTitle() {
+    if (!yearRecord) {
+      showNotification('error', 'Cần lưu kết quả năm học trước')
+      return
+    }
+    setAddingTitle(true)
+    try {
+      const res = await fetch('/api/teacher/competition-titles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          yearlyRecordId: yearRecord.id,
+          type: titleType,
+          level: titleLevel,
+          achievementMethod: titleType === 'CHIEN_SI_THI_DUA' && titleMethod ? titleMethod : null,
+        }),
+      })
+      if (!res.ok) {
+        const d = await res.json()
+        throw new Error(d?.error ?? 'Thêm danh hiệu thất bại')
+      }
+      await fetchAll()
+      showNotification('success', 'Đã thêm danh hiệu thi đua')
+    } catch (err) {
+      showNotification('error', err instanceof Error ? err.message : 'Có lỗi xảy ra')
+    } finally {
+      setAddingTitle(false)
+    }
+  }
+
+  async function handleDeleteTitle(id: string) {
+    if (!confirm('Xóa danh hiệu này?')) return
+    try {
+      const res = await fetch(`/api/teacher/competition-titles/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Xóa thất bại')
+      await fetchAll()
+      showNotification('success', 'Đã xóa danh hiệu')
+    } catch (err) {
+      showNotification('error', err instanceof Error ? err.message : 'Có lỗi xảy ra')
+    }
+  }
+
+  // --- SKKN form ---
+  const [skknTitle, setSkknTitle] = useState('')
+  const [skknLevel, setSkknLevel] = useState<'SCHOOL' | 'DISTRICT' | 'CITY'>('SCHOOL')
+  const [skknRating, setSkknRating] = useState('')
+  const [addingSkkn, setAddingSkkn] = useState(false)
+
+  async function handleAddSkkn(e: React.FormEvent) {
+    e.preventDefault()
+    if (!skknTitle.trim() || !skknRating.trim()) return
+    setAddingSkkn(true)
+    try {
+      const res = await fetch('/api/teacher/skkn', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: skknTitle.trim(),
+          level: skknLevel,
+          rating: skknRating.trim(),
+          academicYear: selectedYear,
+        }),
+      })
+      if (!res.ok) {
+        const d = await res.json()
+        throw new Error(d?.error ?? 'Thêm SKKN thất bại')
+      }
+      setSkknTitle('')
+      setSkknRating('')
+      await fetchAll()
+      showNotification('success', 'Đã thêm SKKN')
+    } catch (err) {
+      showNotification('error', err instanceof Error ? err.message : 'Có lỗi xảy ra')
+    } finally {
+      setAddingSkkn(false)
+    }
+  }
+
+  async function handleDeleteSkkn(id: string) {
+    if (!confirm('Xóa SKKN này? Chỉ SKKN chưa được sử dụng mới có thể xóa.')) return
+    try {
+      const res = await fetch(`/api/teacher/skkn/${id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const d = await res.json()
+        throw new Error(d?.error ?? 'Xóa thất bại')
+      }
+      await fetchAll()
+      showNotification('success', 'Đã xóa SKKN')
+    } catch (err) {
+      showNotification('error', err instanceof Error ? err.message : 'Có lỗi xảy ra')
+    }
+  }
+
+  // --- Award form ---
+  const [awardType, setAwardType] = useState<'CERTIFICATE' | 'COMMENDATION'>('CERTIFICATE')
+  const [awardIssuer, setAwardIssuer] = useState('')
+  const [awardContent, setAwardContent] = useState('')
+  const [awardYear, setAwardYear] = useState(endY)
+  const [addingAward, setAddingAward] = useState(false)
+
+  useEffect(() => {
+    const [, ey] = selectedYear.split('-')
+    setAwardYear(ey)
+  }, [selectedYear])
+
+  async function handleAddAward(e: React.FormEvent) {
+    e.preventDefault()
+    if (!awardIssuer.trim() || !awardContent.trim()) return
+    setAddingAward(true)
+    try {
+      const res = await fetch('/api/teacher/awards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: awardType,
+          issuingLevel: awardIssuer.trim(),
+          content: awardContent.trim(),
+          year: awardYear,
+        }),
+      })
+      if (!res.ok) {
+        const d = await res.json()
+        throw new Error(d?.error ?? 'Thêm khen thưởng thất bại')
+      }
+      setAwardIssuer('')
+      setAwardContent('')
+      await fetchAll()
+      showNotification('success', 'Đã thêm khen thưởng')
+    } catch (err) {
+      showNotification('error', err instanceof Error ? err.message : 'Có lỗi xảy ra')
+    } finally {
+      setAddingAward(false)
+    }
+  }
+
+  async function handleDeleteAward(id: string) {
+    if (!confirm('Xóa khen thưởng này?')) return
+    try {
+      const res = await fetch(`/api/teacher/awards/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Xóa thất bại')
+      await fetchAll()
+      showNotification('success', 'Đã xóa khen thưởng')
+    } catch (err) {
+      showNotification('error', err instanceof Error ? err.message : 'Có lỗi xảy ra')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <span className="text-gray-500 text-sm">Đang tải...</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6 max-w-3xl">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Thành tích</h2>
+          <p className="text-sm text-gray-500 mt-1">Nhập và quản lý thành tích theo năm học</p>
+        </div>
+        <select
+          value={selectedYear}
+          onChange={e => setSelectedYear(e.target.value)}
+          className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          data-testid="year-selector"
+        >
+          {years.map(y => (
+            <option key={y} value={y}>Năm học {y}</option>
+          ))}
+        </select>
+      </div>
+
+      {notification && (
+        <div
+          data-testid={`notification-${notification.type}`}
+          className={`px-4 py-3 rounded-md text-sm font-medium ${
+            notification.type === 'success'
+              ? 'bg-green-50 text-green-800 border border-green-200'
+              : 'bg-red-50 text-red-800 border border-red-200'
+          }`}
+        >
+          {notification.message}
+        </div>
+      )}
+
+      {/* ── 1. KẾT QUẢ NHIỆM VỤ ── */}
+      <section className="bg-white rounded-lg border border-gray-200 p-5">
+        <h3 className="text-base font-semibold text-gray-900 mb-4">
+          Kết quả nhiệm vụ năm học {selectedYear}
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Hoàn thành nhiệm vụ <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={taskResult}
+              onChange={e => setTaskResult(e.target.value as 'GOOD' | 'EXCELLENT')}
+              data-testid="select-taskResult"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="GOOD">Hoàn thành tốt (HTTốt)</option>
+              <option value="EXCELLENT">Hoàn thành xuất sắc (HTXS)</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Xếp loại đảng viên
+            </label>
+            <select
+              value={partyRating}
+              onChange={e => setPartyRating(e.target.value as '' | 'GOOD' | 'EXCELLENT')}
+              data-testid="select-partyRating"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="">Không phải đảng viên</option>
+              <option value="GOOD">Đảng viên hoàn thành tốt</option>
+              <option value="EXCELLENT">Đảng viên hoàn thành xuất sắc</option>
+            </select>
+          </div>
+        </div>
+        <button
+          onClick={handleSaveRecord}
+          disabled={savingRecord}
+          data-testid="btn-save-record"
+          className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium transition-colors"
+        >
+          {savingRecord ? 'Đang lưu...' : yearRecord ? 'Cập nhật' : 'Lưu kết quả'}
+        </button>
+      </section>
+
+      {/* ── 2. DANH HIỆU THI ĐUA ── */}
+      <section className="bg-white rounded-lg border border-gray-200 p-5">
+        <h3 className="text-base font-semibold text-gray-900 mb-4">Danh hiệu thi đua</h3>
+
+        {yearRecord && yearRecord.competitionTitles.length > 0 && (
+          <div className="mb-4 divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
+            {yearRecord.competitionTitles.map(t => (
+              <div key={t.id} className="flex items-center justify-between px-4 py-2.5">
+                <div className="text-sm text-gray-800">
+                  <span className="font-medium">{TITLE_TYPE_LABELS[t.type]}</span>
+                  {t.level && <span className="text-gray-500"> — {LEVEL_LABELS[t.level]}</span>}
+                  {t.achievementMethod && (
+                    <span className="text-gray-400 text-xs ml-1">({t.achievementMethod === 'METHOD_1' ? 'Cách 1' : 'Cách 2'})</span>
+                  )}
+                </div>
+                <button
+                  onClick={() => handleDeleteTitle(t.id)}
+                  className="text-xs text-red-600 hover:text-red-700 hover:underline"
+                >
+                  Xóa
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!yearRecord && (
+          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-4 py-2 mb-4">
+            Cần lưu kết quả nhiệm vụ trước khi thêm danh hiệu
+          </p>
+        )}
+
+        <div className="flex flex-wrap gap-3 items-end">
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Loại danh hiệu</label>
+            <select
+              value={titleType}
+              onChange={e => setTitleType(e.target.value as typeof titleType)}
+              data-testid="select-titleType"
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="CHIEN_SI_THI_DUA">Chiến sĩ thi đua</option>
+              <option value="GV_GIOI">Giáo viên giỏi</option>
+              <option value="GV_CN_GIOI">GV chủ nhiệm giỏi</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Cấp</label>
+            <select
+              value={titleLevel}
+              onChange={e => setTitleLevel(e.target.value as typeof titleLevel)}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="SCHOOL">Cấp trường</option>
+              <option value="DISTRICT">Cấp huyện</option>
+              <option value="CITY">Cấp tỉnh/TP</option>
+            </select>
+          </div>
+          {titleType === 'CHIEN_SI_THI_DUA' && (
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Cách đạt</label>
+              <select
+                value={titleMethod}
+                onChange={e => setTitleMethod(e.target.value as typeof titleMethod)}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">Không chọn</option>
+                <option value="METHOD_1">Cách 1</option>
+                <option value="METHOD_2">Cách 2 (có SKKN)</option>
+              </select>
+            </div>
+          )}
+          <button
+            onClick={handleAddTitle}
+            disabled={addingTitle || !yearRecord}
+            data-testid="btn-add-title"
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium transition-colors"
+          >
+            {addingTitle ? 'Đang thêm...' : '+ Thêm danh hiệu'}
+          </button>
+        </div>
+      </section>
+
+      {/* ── 3. SKKN ── */}
+      <section className="bg-white rounded-lg border border-gray-200 p-5">
+        <h3 className="text-base font-semibold text-gray-900 mb-4">
+          SKKN năm học {selectedYear}
+        </h3>
+
+        {yearSkkns.length > 0 && (
+          <div className="mb-4 divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
+            {yearSkkns.map(s => (
+              <div key={s.id} className="flex items-start justify-between px-4 py-3 gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{s.title}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {SKKN_LEVEL_LABELS[s.level]} · Xếp loại: {s.rating}
+                    {s.status === 'USED' && (
+                      <span className="ml-2 text-amber-600">
+                        (Đã dùng cho: {s.usedFor} — {s.usedYear})
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+                    s.status === 'UNUSED'
+                      ? 'bg-green-50 text-green-700'
+                      : 'bg-amber-50 text-amber-700'
+                  }`}>
+                    {s.status === 'UNUSED' ? 'Chưa dùng' : 'Đã dùng'}
+                  </span>
+                  {s.status === 'UNUSED' && (
+                    <button
+                      onClick={() => handleDeleteSkkn(s.id)}
+                      className="text-xs text-red-600 hover:text-red-700 hover:underline"
+                    >
+                      Xóa
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <form onSubmit={handleAddSkkn} className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Tên SKKN <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={skknTitle}
+              onChange={e => setSkknTitle(e.target.value)}
+              placeholder="Ví dụ: Ứng dụng GeoGebra trong dạy học Hình học lớp 10"
+              data-testid="input-skkn-title"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Cấp công nhận</label>
+              <select
+                value={skknLevel}
+                onChange={e => setSkknLevel(e.target.value as typeof skknLevel)}
+                data-testid="select-skkn-level"
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="SCHOOL">Cấp trường</option>
+                <option value="DISTRICT">Cấp huyện/quận</option>
+                <option value="CITY">Cấp tỉnh/TP</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Xếp loại</label>
+              <input
+                type="text"
+                value={skknRating}
+                onChange={e => setSkknRating(e.target.value)}
+                placeholder="Tốt / Khá / Xuất sắc"
+                data-testid="input-skkn-rating"
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-40"
+              />
+            </div>
+            <div className="flex items-end">
+              <button
+                type="submit"
+                disabled={addingSkkn || !skknTitle.trim() || !skknRating.trim()}
+                data-testid="btn-add-skkn"
+                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium transition-colors"
+              >
+                {addingSkkn ? 'Đang thêm...' : '+ Thêm SKKN'}
+              </button>
+            </div>
+          </div>
+        </form>
+      </section>
+
+      {/* ── 4. KHEN THƯỞNG ── */}
+      <section className="bg-white rounded-lg border border-gray-200 p-5">
+        <h3 className="text-base font-semibold text-gray-900 mb-4">Khen thưởng</h3>
+
+        {yearAwards.length > 0 && (
+          <div className="mb-4 divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
+            {yearAwards.map(a => (
+              <div key={a.id} className="flex items-start justify-between px-4 py-3 gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900">{a.content}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {a.type === 'CERTIFICATE' ? 'Giấy khen' : 'Bằng khen'} · {a.issuingLevel} · Năm {a.year}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleDeleteAward(a.id)}
+                  className="text-xs text-red-600 hover:text-red-700 hover:underline flex-shrink-0"
+                >
+                  Xóa
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <form onSubmit={handleAddAward} className="space-y-3">
+          <div className="flex flex-wrap gap-3">
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Loại</label>
+              <select
+                value={awardType}
+                onChange={e => setAwardType(e.target.value as typeof awardType)}
+                data-testid="select-award-type"
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="CERTIFICATE">Giấy khen</option>
+                <option value="COMMENDATION">Bằng khen</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Năm</label>
+              <input
+                type="text"
+                value={awardYear}
+                onChange={e => setAwardYear(e.target.value)}
+                placeholder="2025"
+                maxLength={4}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-24"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Cơ quan khen thưởng <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={awardIssuer}
+              onChange={e => setAwardIssuer(e.target.value)}
+              placeholder="BGH Trường / UBND Quận / Sở GD-ĐT..."
+              data-testid="input-award-issuer"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Nội dung khen thưởng <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={awardContent}
+              onChange={e => setAwardContent(e.target.value)}
+              placeholder="Ví dụ: GV tiêu biểu xuất sắc năm học 2024-2025"
+              data-testid="input-award-content"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={addingAward || !awardIssuer.trim() || !awardContent.trim()}
+            data-testid="btn-add-award"
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium transition-colors"
+          >
+            {addingAward ? 'Đang thêm...' : '+ Thêm khen thưởng'}
+          </button>
+        </form>
+      </section>
+    </div>
+  )
+}

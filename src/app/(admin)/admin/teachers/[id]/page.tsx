@@ -5,6 +5,11 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import * as Dialog from '@radix-ui/react-dialog'
 
+interface Department {
+  id: string
+  name: string
+}
+
 interface TeacherDetail {
   id: string
   email: string
@@ -29,11 +34,6 @@ interface EditForm {
   isPartyMember: boolean
   partyJoinDate: string
 }
-
-const DEPARTMENTS = [
-  'Toán', 'Văn', 'Anh', 'Lý', 'Hóa', 'Sinh', 'Sử', 'Địa',
-  'GDCD', 'Thể dục', 'Tin học', 'Công nghệ', 'Âm nhạc', 'Mỹ thuật',
-]
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '—'
@@ -64,6 +64,7 @@ export default function TeacherDetailPage() {
   })
   const [saveLoading, setSaveLoading] = useState(false)
 
+  const [departments, setDepartments] = useState<Department[]>([])
   const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false)
   const [deactivateLoading, setDeactivateLoading] = useState(false)
 
@@ -100,6 +101,10 @@ export default function TeacherDetailPage() {
 
   useEffect(() => {
     if (id) fetchTeacher()
+    fetch('/api/admin/departments')
+      .then(r => r.json())
+      .then(setDepartments)
+      .catch(() => {})
   }, [id])
 
   function startEdit() {
@@ -374,8 +379,8 @@ export default function TeacherDetailPage() {
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               >
                 <option value="">Chọn tổ</option>
-                {DEPARTMENTS.map((d) => (
-                  <option key={d} value={d}>{d}</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.name}>{d.name}</option>
                 ))}
               </select>
             ) : (

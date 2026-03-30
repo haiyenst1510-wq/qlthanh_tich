@@ -13,17 +13,16 @@ _(trống)_
 
 ## Up Next (prioritized)
 
-- [ ] #003 — Authentication: Admin tạo tài khoản GV, đổi mật khẩu [area: backend] → [.tasks/003-authentication.md](.tasks/003-authentication.md)
-- [ ] #004 — API CRUD hồ sơ giáo viên (Admin) [area: backend] → [.tasks/004-teacher-profile-api.md](.tasks/004-teacher-profile-api.md)
 - [ ] #005 — Logic SKKN tiêu: rule-driven consume engine [area: backend] → [.tasks/005-skkn-consume-logic.md](.tasks/005-skkn-consume-logic.md)
+- [ ] #006 — API nhập thành tích theo năm học (GV) [area: backend] → [.tasks/006-achievement-api.md](.tasks/006-achievement-api.md)
+- [ ] #009 — UI GV: trang hồ sơ + form nhập thành tích [area: frontend] → [.tasks/009-teacher-ui.md](.tasks/009-teacher-ui.md)
 
 ---
 
 ## Backlog
 
-- [ ] #004 — API CRUD hồ sơ giáo viên (Admin) [area: backend] → [.tasks/004-teacher-profile-api.md](.tasks/004-teacher-profile-api.md)
-- [ ] #005 — Logic SKKN tiêu: CSTĐ Cách 2 + Bằng khen UBND TP [area: backend] → [.tasks/005-skkn-consume-logic.md](.tasks/005-skkn-consume-logic.md)
-- [ ] #006 — API nhập thành tích theo năm học (GV) [area: backend] → [.tasks/006-achievement-api.md](.tasks/006-achievement-api.md)
+- [ ] #007 — API cấu hình quy tắc xét duyệt danh hiệu (Admin) [area: backend] → [.tasks/007-rules-config-api.md](.tasks/007-rules-config-api.md)
+- [ ] #008 — Engine lọc GV tiềm năng theo danh hiệu [area: backend] → [.tasks/008-eligibility-engine.md](.tasks/008-eligibility-engine.md)
 - [ ] #007 — API cấu hình quy tắc xét duyệt danh hiệu (Admin) [area: backend] → [.tasks/007-rules-config-api.md](.tasks/007-rules-config-api.md)
 - [ ] #008 — Engine lọc GV tiềm năng theo danh hiệu [area: backend] → [.tasks/008-eligibility-engine.md](.tasks/008-eligibility-engine.md)
 - [ ] #009 — UI GV: trang hồ sơ + form nhập thành tích [area: frontend] → [.tasks/009-teacher-ui.md](.tasks/009-teacher-ui.md)
@@ -41,6 +40,8 @@ _(trống)_
 - [x] #000 — Initial project setup and template configuration → [.tasks/000-initial-project-setup.md](.tasks/000-initial-project-setup.md)
 - [x] #001 — Khởi tạo dự án Next.js + Prisma + Supabase + Auth → [.tasks/001-project-init.md](.tasks/001-project-init.md)
 - [x] #002 — Database schema: GV, thành tích, SKKN, khen thưởng, quy tắc → [.tasks/002-database-schema.md](.tasks/002-database-schema.md)
+- [x] #003 — Authentication: Admin tạo tài khoản GV, đổi mật khẩu → [.tasks/003-authentication.md](.tasks/003-authentication.md)
+- [x] #004 — API CRUD hồ sơ giáo viên (Admin) → [.tasks/004-teacher-profile-api.md](.tasks/004-teacher-profile-api.md)
 
 ---
 
